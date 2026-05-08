@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOM Player List Combiner</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- PWA Manifest Data URI -->
+    <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiVE9NIFBsYXllciBMaXN0IENvbWJpbmVyIiwic2hvcnRfbmFtZSI6IlRPTSBDb21iaW5lciIsInN0YXJ0X3VybCI6Ii4iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjMGYxNzJhIiwidGhlbWVfY29sb3IiOiIjOGI1Y2Y2IiwiZGVzY3JpcHRpb24iOiJNZXJnZSBwbGF5ZXJzLnhtbCBmaWxlcyBvZmZsaW5lLiIsImljb25zIjpbXX0=">
+    
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --primary: #8b5cf6;
+            --primary-hover: #7c3aed;
+            --secondary: #ec4899;
+            --text-main: #f8fafc;
+            --text-muted: #cbd5e1;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --font-main: 'Outfit', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 3rem 1rem;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated Blob Backgrounds */
+        .blob {
+            position: fixed;
+            filter: blur(100px);
+            z-index: -1;
+            opacity: 0.5;
+            border-radius: 50%;
+            animation: float 12s infinite ease-in-out alternate;
+        }
+        .blob-1 { top: -20%; left: -10%; width: 60vw; height: 60vw; background: rgba(139, 92, 246, 0.25); }
+        .blob-2 { bottom: -20%; right: -10%; width: 50vw; height: 50vw; background: rgba(236, 72, 153, 0.25); }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(40px, 40px) scale(1.1); }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            z-index: 1;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+            margin-bottom: 2rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-panel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.35);
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #fff 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        p.subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin-bottom: 2.5rem;
+        }
+
+        /* Layout */
+        .flex-row {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        .flex-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .flex-row { flex-direction: column; }
+        }
+
+        /* Dropzones */
+        .dropzone {
+            flex: 1;
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 2.5rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--primary);
+            background: rgba(139, 92, 246, 0.1);
+        }
+
+        .dropzone.has-file {
+            border-color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .dropzone input[type="file"] { display: none; }
+        
+        .dropzone svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 1rem;
+            fill: var(--text-muted);
+            transition: fill 0.3s ease;
+        }
+
+        .dropzone:hover svg, .dropzone.dragover svg { fill: var(--primary); }
+        .dropzone.has-file svg { fill: var(--success); }
+
+        .file-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-main);
+            word-break: break-all;
+        }
+        
+        .file-subtext {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        /* Inputs */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .input-group label {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            padding-left: 0.25rem;
+        }
+        .input-group input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1rem;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        /* Button */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 1.25rem;
+            border: none;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            font-family: inherit;
+            font-size: 1.25rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+            margin-top: 1rem;
+        }
+        .btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(139, 92, 246, 0.6);
+        }
+        .btn:disabled {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.2);
+            cursor: not-allowed;
+            box-shadow: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Utilities */
+        .hidden { display: none !important; }
+        .text-primary { color: var(--primary); }
+        .text-success { color: var(--success); }
+        .font-bold { font-weight: 700; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mt-4 { margin-top: 1.5rem; }
+
+        /* Status & Warnings */
+        .status-box {
+            background: rgba(0, 0, 0, 0.2);
+            border-left: 4px solid var(--error);
+            padding: 1.5rem;
+            border-radius: 8px 16px 16px 8px;
+            margin-top: 2rem;
+            animation: fadeIn 0.4s ease;
+        }
+        .status-box.warning { border-left-color: var(--warning); background: rgba(245, 158, 11, 0.05); }
+        .status-box.error { border-left-color: var(--error); background: rgba(239, 68, 68, 0.05); }
+        .status-box h3 {
+            margin-bottom: 0.75rem;
+            font-size: 1.2rem;
+        }
+        .status-box ul {
+            list-style-type: disc;
+            padding-left: 1.5rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        /* Conflicts Table */
+        .conflicts-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            transition: background 0.2s;
+        }
+        .conflicts-header:hover { background: rgba(255, 255, 255, 0.1); }
+        .table-responsive {
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        th {
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+        }
+        tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+        /* Downloads */
+        .downloads-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        .btn-dl {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .btn-dl-primary {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .btn-dl-primary:hover {
+            background: var(--success);
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        }
+        .btn-dl-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .btn-dl-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+
+    <div class="container">
+        <div class="glass-panel">
+            <h1>TOM Combiner</h1>
+            <p class="subtitle">Merge two TOM players.xml files safely and locally.</p>
+
+            <div class="flex-row">
+                <!-- Store 1 -->
+                <div class="flex-col">
+                    <div class="dropzone" id="dropzone1">
+                        <input type="file" id="file1" accept=".xml">
+                        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                        <div class="file-name">Select Store 1 File</div>
+                        <div class="file-subtext">or drag and drop here</div>
+                    </div>
+                    <div class="input-group">
+                        <label for="store1Name">Store 1 Name (Optional)</label>
+                        <input type="text" id="store1Name" placeholder="e.g. Downtown League">
+                    </div>
+                </div>
+
+                <!-- Store 2 -->
+                <div class="flex-col">
+                    <div class="dropzone" id="dropzone2">
+                        <input type="file" id="file2" accept=".xml">
+                        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                        <div class="file-name">Select Store 2 File</div>
+                        <div class="file-subtext">or drag and drop here</div>
+                    </div>
+                    <div class="input-group">
+                        <label for="store2Name">Store 2 Name (Optional)</label>
+                        <input type="text" id="store2Name" placeholder="e.g. Uptown Store">
+                    </div>
+                </div>
+            </div>
+
+            <button id="mergeBtn" class="btn" disabled>Merge & Prepare Downloads</button>
+            
+            <div id="globalError" class="status-box error hidden">
+                <h3 class="text-error">Error Processing Files</h3>
+                <p id="globalErrorMsg"></p>
+            </div>
+            
+            <div id="warningsArea" class="status-box warning hidden">
+                <h3 class="text-warning">Merge Warnings</h3>
+                <ul id="warningsList"></ul>
+            </div>
+
+            <div id="conflictsArea" class="glass-panel mt-4 hidden" style="padding: 1.5rem;">
+                <div class="conflicts-header" id="conflictsToggle">
+                    <h3 class="text-primary mb-0" id="conflictsSummary">0 Conflicts Handled</h3>
+                    <span id="conflictsIcon">▼ Show</span>
+                </div>
+                <div id="conflictsContent" class="hidden table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>UserID</th>
+                                <th>Field</th>
+                                <th>Store 1 Value</th>
+                                <th>Store 2 Value</th>
+                                <th>Kept Value (Latest)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="conflictsTbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="downloadsArea" class="downloads-grid hidden">
+                <a id="dlCombined" class="btn-dl btn-dl-primary" href="#">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                    Download Merged XML
+                </a>
+                <a id="dlStore1" class="btn-dl btn-dl-secondary" href="#">Download Store 1 Copy</a>
+                <a id="dlStore2" class="btn-dl btn-dl-secondary" href="#">Download Store 2 Copy</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Inline PWA Service Worker Registration
+        const swCode = `
+        const CACHE_NAME = 'tom-combiner-v1';
+        self.addEventListener('install', e => {
+            e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(['./'])));
+        });
+        self.addEventListener('fetch', e => {
+            e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
+        });
+        `;
+        const swBlob = new Blob([swCode], { type: 'text/javascript' });
+        const swUrl = URL.createObjectURL(swBlob);
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register(swUrl).catch(() => {}); // silent fail offline
+        }
+
+        // DOM Elements
+        const f1Input = document.getElementById('file1');
+        const f2Input = document.getElementById('file2');
+        const dz1 = document.getElementById('dropzone1');
+        const dz2 = document.getElementById('dropzone2');
+        const mergeBtn = document.getElementById('mergeBtn');
+        
+        // State
+        const state = { file1: null, file2: null };
+
+        // Prevent default browser drag-and-drop behavior globally
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            window.addEventListener(eventName, e => e.preventDefault(), false);
+        });
+
+        // Setup Dropzones
+        function setupDZ(dz, input, key) {
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dz.addEventListener(eventName, e => {
+                    e.preventDefault();
+                    dz.classList.add('dragover');
+                });
+            });
+            ['dragleave', 'drop'].forEach(eventName => {
+                dz.addEventListener(eventName, e => {
+                    e.preventDefault();
+                    dz.classList.remove('dragover');
+                });
+            });
+            dz.addEventListener('drop', e => {
+                if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0], dz, key);
+            });
+            dz.addEventListener('click', () => input.click());
+            input.addEventListener('change', e => {
+                if (e.target.files.length) handleFile(e.target.files[0], dz, key);
+            });
+        }
+        
+        function handleFile(file, dz, key) {
+            state[key] = file;
+            dz.querySelector('.file-name').textContent = file.name;
+            dz.classList.add('has-file');
+            mergeBtn.disabled = !(state.file1 && state.file2);
+        }
+
+        setupDZ(dz1, f1Input, 'file1');
+        setupDZ(dz2, f2Input, 'file2');
+
+        // Conflicts Toggle
+        document.getElementById('conflictsToggle').addEventListener('click', () => {
+            const content = document.getElementById('conflictsContent');
+            const icon = document.getElementById('conflictsIcon');
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.textContent = '▲ Hide';
+            } else {
+                content.classList.add('hidden');
+                icon.textContent = '▼ Show';
+            }
+        });
+
+        // Core Utilities
+        function readFile(file) {
+            return new Promise((res, rej) => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    let text = e.target.result;
+                    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+                    res(text);
+                };
+                reader.onerror = rej;
+                reader.readAsText(file);
+            });
+        }
+
+        const getChildText = (parent, tagName) => {
+            for (let child of parent.children) {
+                if (child.tagName.toLowerCase() === tagName.toLowerCase()) return child.textContent;
+            }
+            return null;
+        };
+
+        function parseTomDate(dateStr) {
+            const t = Date.parse(dateStr);
+            if (!isNaN(t)) return t;
+            const p = dateStr.split(/[ \/:]/);
+            if (p.length >= 6) return new Date(p[2], p[0]-1, p[1], p[3], p[4], p[5]).getTime();
+            return NaN;
+        }
+
+        function sanitizeStoreName(name, fallbackStr) {
+            let s = name.replace(/[^A-Za-z0-9_-]/g, '-');
+            s = s.replace(/-+/g, '-');
+            s = s.replace(/^-+|-+$/g, '');
+            return s || fallbackStr;
+        }
+
+        function getFallbackDate(file) {
+            const d = new Date(file.lastModified);
+            return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+        }
+
+        // Logic
+        function extractPlayers(doc, sourceName, context) {
+            const players = Array.from(doc.querySelectorAll('player'));
+            const validPlayers = [];
+            const localMap = new Map();
+            
+            for (const p of players) {
+                const userid = p.getAttribute('userid');
+                if (!userid) {
+                    context.warnings.push(`[${sourceName}] Skipped a player: Missing userid attribute.`);
+                    continue;
+                }
+                
+                let missingField = false;
+                const playerObj = { userid, source: sourceName, originalElement: p };
+                const fields = ['firstname', 'lastname', 'birthdate', 'creationdate', 'lastmodifieddate'];
+                
+                for (const f of fields) {
+                    const val = getChildText(p, f);
+                    if (val === null || val.trim() === '') {
+                        context.warnings.push(`[${sourceName}] Skipped player (userid=${userid}): Missing or empty <${f}>.`);
+                        missingField = true;
+                        break;
+                    }
+                    playerObj[f] = val.trim();
+                }
+                if (missingField) continue;
+                
+                playerObj.cTime = parseTomDate(playerObj.creationdate);
+                playerObj.mTime = parseTomDate(playerObj.lastmodifieddate);
+                
+                if (isNaN(playerObj.cTime) || isNaN(playerObj.mTime)) {
+                    context.warnings.push(`[${sourceName}] Skipped player (userid=${userid}): Unparseable dates.`);
+                    continue;
+                }
+                
+                if (localMap.has(userid)) {
+                    context.warnings.push(`[${sourceName}] Duplicate userid=${userid} found within file. Keeping newest.`);
+                    localMap.get(userid).push(playerObj);
+                } else {
+                    localMap.set(userid, [playerObj]);
+                }
+                validPlayers.push(playerObj);
+            }
+            
+            for (const list of localMap.values()) {
+                list.sort((a, b) => (b.mTime !== a.mTime ? b.mTime - a.mTime : a.cTime - b.cTime));
+            }
+            return { localMap, doc };
+        }
+
+        function mergePlayers(map1, map2, context) {
+            const mergedMap = new Map();
+            const allIds = new Set([...map1.keys(), ...map2.keys()]);
+            
+            for (const uid of allIds) {
+                const c1 = map1.has(uid) ? map1.get(uid) : [];
+                const c2 = map2.has(uid) ? map2.get(uid) : [];
+                const candidates = [...c1, ...c2];
+                
+                candidates.sort((a, b) => (b.mTime !== a.mTime ? b.mTime - a.mTime : a.cTime - b.cTime));
+                const winner = candidates[0];
+                
+                const earliestCTime = Math.min(...candidates.map(c => c.cTime));
+                const latestMTime = Math.max(...candidates.map(c => c.mTime));
+                
+                let earliestStr = winner.creationdate;
+                let latestStr = winner.lastmodifieddate;
+                for (const c of candidates) {
+                    if (c.cTime === earliestCTime) earliestStr = c.creationdate;
+                    if (c.mTime === latestMTime) latestStr = c.lastmodifieddate;
+                }
+                
+                if (c1.length > 0 && c2.length > 0) {
+                    const v1 = c1[0];
+                    const v2 = c2[0];
+                    let isConflict = false;
+                    const diffs = [];
+                    for (const f of ['firstname', 'lastname', 'birthdate']) {
+                        if (v1[f] !== v2[f]) {
+                            isConflict = true;
+                            diffs.push({ field: f, val1: v1[f], val2: v2[f] });
+                        }
+                    }
+                    if (isConflict) {
+                        context.conflicts.push({ userid: uid, diffs, keptSource: winner.source });
+                    }
+                }
+                
+                const clonedEl = winner.originalElement.cloneNode(true);
+                for (let child of clonedEl.children) {
+                    if (child.tagName.toLowerCase() === 'creationdate') child.textContent = earliestStr;
+                    if (child.tagName.toLowerCase() === 'lastmodifieddate') child.textContent = latestStr;
+                }
+                
+                mergedMap.set(uid, {
+                    userid: uid,
+                    firstname: winner.firstname,
+                    lastname: winner.lastname,
+                    element: clonedEl
+                });
+            }
+            return mergedMap;
+        }
+
+        function serializeXml(mergedList, doc1, s1Name, s2Name) {
+            let origComment = "<!-- Players database. -->";
+            for (let node of doc1.childNodes) {
+                if (node.nodeType === Node.COMMENT_NODE) {
+                    origComment = `<!--${node.nodeValue}-->`; break;
+                }
+            }
+            
+            const dateStr = new Date().toISOString().split('T')[0];
+            const mergeComment = `<!-- ${dateStr} : Merged players from ${s1Name} and ${s2Name} -->`;
+            
+            const xmlDoc = document.implementation.createDocument(null, "players", null);
+            const root = xmlDoc.documentElement;
+            
+            for (const item of mergedList) {
+                root.appendChild(xmlDoc.importNode(item.element, true));
+            }
+            
+            const serializer = new XMLSerializer();
+            return `<?xml version="1.0" encoding="UTF-8"?>\n${origComment}\n${mergeComment}\n${serializer.serializeToString(root)}`;
+        }
+
+        // Main Handler
+        mergeBtn.addEventListener('click', async () => {
+            const errBox = document.getElementById('globalError');
+            const warnBox = document.getElementById('warningsArea');
+            const confBox = document.getElementById('conflictsArea');
+            const dlBox = document.getElementById('downloadsArea');
+            
+            errBox.classList.add('hidden');
+            warnBox.classList.add('hidden');
+            confBox.classList.add('hidden');
+            dlBox.classList.add('hidden');
+            
+            try {
+                const t1 = await readFile(state.file1);
+                const t2 = await readFile(state.file2);
+                
+                const parser = new DOMParser();
+                const doc1 = parser.parseFromString(t1, "application/xml");
+                const doc2 = parser.parseFromString(t2, "application/xml");
+                
+                if (doc1.querySelector('parsererror')) throw new Error("File 1 is not valid XML.");
+                if (doc2.querySelector('parsererror')) throw new Error("File 2 is not valid XML.");
+                
+                const ctx = { warnings: [], conflicts: [] };
+                
+                const ext1 = extractPlayers(doc1, "Store 1", ctx);
+                const ext2 = extractPlayers(doc2, "Store 2", ctx);
+                
+                const mergedMap = mergePlayers(ext1.localMap, ext2.localMap, ctx);
+                
+                if (mergedMap.size === 0) {
+                    throw new Error("No valid players found in either file.");
+                }
+                
+                // Sorting Output
+                const mergedList = Array.from(mergedMap.values());
+                mergedList.sort((a, b) => {
+                    const fA = a.firstname.toLowerCase();
+                    const fB = b.firstname.toLowerCase();
+                    if (fA < fB) return -1;
+                    if (fA > fB) return 1;
+                    const lA = a.lastname.toLowerCase();
+                    const lB = b.lastname.toLowerCase();
+                    if (lA < lB) return -1;
+                    if (lA > lB) return 1;
+                    return 0;
+                });
+                
+                // Names & Renaming
+                let s1Name = sanitizeStoreName(document.getElementById('store1Name').value, getFallbackDate(state.file1));
+                let s2Name = sanitizeStoreName(document.getElementById('store2Name').value, getFallbackDate(state.file2));
+                
+                if (s1Name === s2Name) {
+                    ctx.warnings.push(`Identical store names after sanitization ("${s1Name}"). Appended _1 and _2.`);
+                    s1Name += "_1"; s2Name += "_2";
+                }
+                
+                const finalXml = serializeXml(mergedList, ext1.doc, s1Name, s2Name);
+                
+                // Present Warnings
+                if (ctx.warnings.length > 0) {
+                    const wl = document.getElementById('warningsList');
+                    wl.innerHTML = '';
+                    ctx.warnings.forEach(w => {
+                        const li = document.createElement('li');
+                        li.textContent = w;
+                        wl.appendChild(li);
+                    });
+                    warnBox.classList.remove('hidden');
+                }
+                
+                // Present Conflicts
+                if (ctx.conflicts.length > 0) {
+                    document.getElementById('conflictsSummary').textContent = `${ctx.conflicts.length} Conflict(s) Resolved`;
+                    const tb = document.getElementById('conflictsTbody');
+                    tb.innerHTML = '';
+                    ctx.conflicts.forEach(c => {
+                        c.diffs.forEach(d => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${c.userid}</td>
+                                <td>${d.field}</td>
+                                <td>${d.val1}</td>
+                                <td>${d.val2}</td>
+                                <td class="text-primary font-bold">${c.keptSource === 'Store 1' ? d.val1 : d.val2}</td>
+                            `;
+                            tb.appendChild(tr);
+                        });
+                    });
+                    confBox.classList.remove('hidden');
+                }
+                
+                // Setup Downloads
+                document.getElementById('dlCombined').href = URL.createObjectURL(new Blob([finalXml], { type: 'application/xml' }));
+                document.getElementById('dlCombined').download = "players.xml";
+                
+                document.getElementById('dlStore1').href = URL.createObjectURL(new Blob([t1], { type: 'application/xml' }));
+                document.getElementById('dlStore1').download = `players_${s1Name}.xml`;
+                
+                document.getElementById('dlStore2').href = URL.createObjectURL(new Blob([t2], { type: 'application/xml' }));
+                document.getElementById('dlStore2').download = `players_${s2Name}.xml`;
+                
+                dlBox.classList.remove('hidden');
+                
+            } catch (err) {
+                errBox.classList.remove('hidden');
+                document.getElementById('globalErrorMsg').textContent = err.message;
+            }
+        });
+
+        // Built-in Unit Test Harness (Runnable via Console)
+        window.runTests = function() {
+            console.log("=== Running TOM Combiner Tests ===");
+            let passed = 0; let failed = 0;
+            const assert = (cond, msg) => { if (cond) { console.log("✅ PASS: " + msg); passed++; } else { console.error("❌ FAIL: " + msg); failed++; } };
+            
+            const dp = new DOMParser();
+            const xmlA = `<?xml version="1.0" encoding="UTF-8"?><players><player userid="1"><firstname>A</firstname><lastname>Doe</lastname><birthdate>01/01/2000</birthdate><creationdate>04/30/2026 10:00:00</creationdate><lastmodifieddate>04/30/2026 20:00:00</lastmodifieddate></player></players>`;
+            const xmlB = `<?xml version="1.0" encoding="UTF-8"?><players><player userid="1"><firstname>B</firstname><lastname>Doe</lastname><birthdate>01/01/2000</birthdate><creationdate>04/30/2026 12:00:00</creationdate><lastmodifieddate>05/01/2026 10:00:00</lastmodifieddate></player></players>`;
+            
+            const docA = dp.parseFromString(xmlA, "application/xml");
+            const docB = dp.parseFromString(xmlB, "application/xml");
+            
+            const ctx = { warnings: [], conflicts: [] };
+            const extA = extractPlayers(docA, "S1", ctx);
+            const extB = extractPlayers(docB, "S2", ctx);
+            
+            const merged = mergePlayers(extA.localMap, extB.localMap, ctx);
+            const p = merged.get("1");
+            
+            assert(p.firstname === "B", "1.1 Basic latest-modified wins");
+            assert(getChildText(p.element, 'creationdate') === "04/30/2026 10:00:00", "Earliest creation date kept");
+            assert(getChildText(p.element, 'lastmodifieddate') === "05/01/2026 10:00:00", "Latest modified date kept");
+            assert(ctx.conflicts.length === 1 && ctx.conflicts[0].diffs[0].field === "firstname", "Conflict detected correctly");
+            
+            const s1 = sanitizeStoreName("Hello!!!", "default");
+            assert(s1 === "Hello-", "Sanitize replaces chars");
+            
+            console.log(`Tests Complete: ${passed} passed, ${failed} failed.`);
+        };
+    </script>
+</body>
+</html>

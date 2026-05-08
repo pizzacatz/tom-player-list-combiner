@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Players database. -->
+<players>
+	<player userid="123456789">
+		<firstname>YidoTest</firstname>
+		<lastname>JangTEST</lastname>
+		<birthdate>02/27/1990</birthdate>
+		<creationdate>05/01/2026 08:07:08</creationdate>
+		<lastmodifieddate>05/01/2026 08:07:08</lastmodifieddate>
+	</player>
+	<player userid="12456794">
+		<firstname>Zedd</firstname>
+		<lastname>Zorro</lastname>
+		<birthdate>02/27/1990</birthdate>
+		<creationdate>05/01/2026 08:07:48</creationdate>
+		<lastmodifieddate>05/01/2026 08:07:48</lastmodifieddate>
+	</player>
+	<player userid="2602">
+		<firstname>Paisley</firstname>
+		<lastname>Collins</lastname>
+		<birthdate>03/17/1996</birthdate>
+		<creationdate>04/30/2026 20:50:50</creationdate>
+		<lastmodifieddate>05/30/2026 20:50:50</lastmodifieddate>
+	</player>
+</players>
